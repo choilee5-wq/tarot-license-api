@@ -4,7 +4,6 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // preflight 대응
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -19,17 +18,24 @@ export default async function handler(req, res) {
     const key = body?.key;
 
     if (!key) {
-      return res.status(200).json({ success: false, message: "No key" });
+      return res.status(200).json({ success: false });
     }
 
-    // 테스트 조건 (11자리 이상)
-    if (key.length > 10) {
+    // ✅ 실제 허용 키 목록
+    const VALID_KEYS = [
+      "ABC123-REAL-KEY-001",
+      "ABC123-REAL-KEY-002",
+      "ABC123-REAL-KEY-003"
+    ];
+
+    // ✅ 키 검증
+    if (VALID_KEYS.includes(key.trim())) {
       return res.status(200).json({ success: true });
     } else {
       return res.status(200).json({ success: false });
     }
 
   } catch (e) {
-    return res.status(200).json({ success: false, error: "Server error" });
+    return res.status(200).json({ success: false });
   }
 }
