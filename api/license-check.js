@@ -1,41 +1,51 @@
 export default async function handler(req, res) {
-  // ✅ CORS 허용
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  const { licenseKey } = req.body;
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+  if (!licenseKey) {
+    return res.status(400).json({ success: false });
   }
 
   try {
-    let body = req.body;
+    const response = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/licenses?license_key=eq.${licenseKey}`,
+      {
+        method: "GET",
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
 
-    if (typeof body === "string") {
-      body = JSON.parse(body);
-    }
+    const data = await response.json();
 
-    const key = body?.key;
-
-    if (!key) {
+    if (data.length === 0) {
       return res.status(200).json({ success: false });
     }
 
-    // ✅ 실제 허용 키 목록
-    const VALID_KEYS = [
-      "ABC123-REAL-KEY-001",
-      "ABC123-REAL-KEY-002",
-      "ABC123-REAL-KEY-003"
-    ];
+    const license = data[0];
 
-    // ✅ 키 검증
-    if (VALID_KEYS.includes(key.trim())) {
-      return res.status(200).json({ success: true });
-    } else {
+    // 이미 사용된 키
+    if (license.is_used) {
       return res.status(200).json({ success: false });
     }
 
-  } catch (e) {
-    return res.status(200).json({ success: false });
+    // 사용 처리
+    await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/licenses?id=eq.${license.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ is_used: true }),
+      }
+    );
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false });
   }
 }
