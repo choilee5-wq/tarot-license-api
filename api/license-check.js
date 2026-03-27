@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     let key;
 
-    // 🔥 핵심: body가 문자열일 경우 대응
+    // body 형태 대응
     if (typeof req.body === "string") {
       key = req.body;
     } else {
@@ -20,8 +20,8 @@ export default async function handler(req, res) {
     const response = await fetch(url, {
       method: "GET",
       headers: {
-        apikey: process.env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+        apikey: process.env.SUPABASE_SECRET_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
         "Content-Type": "application/json",
       },
     });
@@ -38,14 +38,13 @@ export default async function handler(req, res) {
 
     // 사용 처리
     await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/licenses?id=eq.${data[0].id}`,
+      `${process.env.SUPABASE_URL}/rest/v1/licenses?license_key=eq.${cleanKey}`,
       {
         method: "PATCH",
         headers: {
-          apikey: process.env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+          apikey: process.env.SUPABASE_SECRET_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
           "Content-Type": "application/json",
-          Prefer: "return=minimal",
         },
         body: JSON.stringify({ is_used: true }),
       }
@@ -53,7 +52,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ valid: true });
 
-  } catch (error) {
-    return res.status(500).json({ valid: false, error: error.message });
+  } catch (err) {
+    return res.status(500).json({ valid: false, error: "Server error" });
   }
 }
