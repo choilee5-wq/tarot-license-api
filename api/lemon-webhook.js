@@ -5,14 +5,16 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    // 2. webhook 데이터 받기
+    // 2. webhook 데이터
     const body = req.body;
     console.log("📩 webhook:", JSON.stringify(body, null, 2));
 
-    // 3. 라이센스 키 추출 (둘 다 대응)
+    // 3. 라이센스 키 추출 (모든 케이스 대응)
     const licenseKey =
-      body?.data?.attributes?.key ||
-      body?.data?.attributes?.license_key;
+      body?.meta?.custom_data?.license_key ||   // 커스텀 데이터
+      body?.data?.attributes?.key ||           // Lemon 기본 key
+      body?.data?.attributes?.license_key ||   // 혹시 다른 구조
+      body?.data?.id;                          // 최후 fallback
 
     if (!licenseKey) {
       console.error("❌ license key 없음");
@@ -37,6 +39,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         apikey: SERVICE_KEY,
         Authorization: `Bearer ${SERVICE_KEY}`,
+        Prefer: "return=minimal"
       },
       body: JSON.stringify({
         license_key: licenseKey,
