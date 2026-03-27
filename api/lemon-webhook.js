@@ -5,12 +5,11 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    // 2. body 받기
+    // 2. webhook 데이터 받기
     const body = req.body;
+    console.log("📩 webhook:", JSON.stringify(body, null, 2));
 
-    console.log("📩 webhook received:", JSON.stringify(body, null, 2));
-
-    // 3. license key 추출 (핵심 수정 부분)
+    // 3. 라이센스 키 추출 (둘 다 대응)
     const licenseKey =
       body?.data?.attributes?.key ||
       body?.data?.attributes?.license_key;
@@ -27,18 +26,17 @@ export default async function handler(req, res) {
     const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
-      console.error("❌ Supabase env 없음");
+      console.error("❌ env 없음");
       return res.status(500).json({ error: "Missing env" });
     }
 
-    // 5. Supabase insert
+    // 5. Supabase 저장
     const response = await fetch(`${SUPABASE_URL}/rest/v1/licenses`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         apikey: SERVICE_KEY,
         Authorization: `Bearer ${SERVICE_KEY}`,
-        Prefer: "return=minimal",
       },
       body: JSON.stringify({
         license_key: licenseKey,
@@ -46,16 +44,16 @@ export default async function handler(req, res) {
       }),
     });
 
-    // 6. 결과 확인
     if (!response.ok) {
       const text = await response.text();
-      console.error("❌ Supabase insert 실패:", text);
-      return res.status(500).json({ error: "DB insert failed" });
+      console.error("❌ DB 저장 실패:", text);
+      return res.status(500).json({ error: text });
     }
 
     console.log("🔥 DB 저장 성공");
 
     return res.status(200).json({ success: true });
+
   } catch (err) {
     console.error("💥 서버 에러:", err);
     return res.status(500).json({ error: "Server error" });
