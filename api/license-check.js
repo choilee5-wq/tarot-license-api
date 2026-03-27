@@ -1,51 +1,51 @@
 export default async function handler(req, res) {
-  const { licenseKey } = req.body;
-
-  if (!licenseKey) {
-    return res.status(400).json({ success: false });
-  }
-
   try {
-    const response = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/licenses?license_key=eq.${licenseKey}`,
-      {
-        method: "GET",
-        headers: {
-          apikey: process.env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
+    const { key } = req.body;
 
-    const data = await response.json();
+    console.log("받은 키:", key);
 
-    if (data.length === 0) {
-      return res.status(200).json({ success: false });
+    if (!key) {
+      return res.status(400).json({ valid: false, error: "No key" });
     }
 
-    const license = data[0];
+    const url = `${process.env.SUPABASE_URL}/rest/v1/licenses?license_key=eq.${key}`;
+    console.log("조회 URL:", url);
 
-    // 이미 사용된 키
-    if (license.is_used) {
-      return res.status(200).json({ success: false });
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        apikey: process.env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+    console.log("DB 결과:", data);
+
+    if (!data || data.length === 0) {
+      return res.status(400).json({ valid: false, error: "Invalid key" });
+    }
+
+    if (data[0].is_used) {
+      return res.status(400).json({ valid: false, error: "Already used" });
     }
 
     // 사용 처리
-    await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/licenses?id=eq.${license.id}`,
-      {
-        method: "PATCH",
-        headers: {
-          apikey: process.env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ is_used: true }),
-      }
-    );
+    await fetch(url, {
+      method: "PATCH",
+      headers: {
+        apikey: process.env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ is_used: true }),
+    });
 
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    return res.status(500).json({ success: false });
+    return res.status(200).json({ valid: true });
+  } catch (err) {
+    console.error("에러:", err);
+    return res.status(500).json({ valid: false, error: "Server error" });
   }
 }
